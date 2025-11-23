@@ -1,0 +1,54 @@
+# GitHub Pagesへのデプロイワークフロー
+# mainブランチへのプッシュ時に自動的に静的サイトをデプロイします
+
+name: GitHub Pagesへデプロイ
+
+# ワークフローをトリガーする条件
+on:
+  # mainブランチへのプッシュ時に実行
+  push:
+    branches: ["main"]
+  
+  # GitHub Actionsタブからのワークフロー手動実行を許可
+  workflow_dispatch:
+
+# GitHub Pagesへのデプロイに必要な権限設定
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行制御：進行中のデプロイをキャンセルせず、待機させる
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # デプロイジョブ
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      # リポジトリのチェックアウト
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+      
+      # GitHub Pagesの設定
+      - name: GitHub Pagesを設定
+        uses: actions/configure-pages@v4
+      
+      # デプロイ用のアーティファクトをアップロード
+      # ルートディレクトリの全ファイルをアップロード
+      - name: アーティファクトをアップロード
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      
+      # GitHub Pagesへデプロイ
+      - name: GitHub Pagesへデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4

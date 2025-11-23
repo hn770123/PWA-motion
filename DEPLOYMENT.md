@@ -4,6 +4,10 @@
 
 このプロジェクトをGitHub Pagesで公開するための手順です。
 
+## 自動デプロイ（推奨）
+
+GitHub Actionsを使用した自動デプロイが設定されています。
+
 ### ステップ1: リポジトリ設定へ移動
 
 1. GitHubでリポジトリ `hn770123/PWA-motion` を開く
@@ -13,18 +17,32 @@
 
 1. 左サイドバーから **Pages** を選択
 2. **Source** セクションで以下を設定：
-   - **Source**: `Deploy from a branch` を選択
-   - **Branch**: `main` または `copilot/create-tilt-game-for-iphone` を選択
-   - **Folder**: `/ (root)` を選択
-3. **Save** ボタンをクリック
+   - **Source**: `GitHub Actions` を選択
+3. 設定は自動的に保存されます
 
-### ステップ3: デプロイ完了を待つ
+### ステップ3: デプロイ実行
 
-- 数分後、ページが公開されます
+1. `main` ブランチにコードをプッシュ、または
+2. **Actions** タブから「GitHub Pagesへデプロイ」ワークフローを手動実行
+
+### ステップ4: デプロイ完了を待つ
+
+- **Actions** タブでデプロイの進行状況を確認できます
+- 通常1〜2分程度でデプロイが完了します
 - 公開URLは以下の形式になります：
   ```
   https://hn770123.github.io/PWA-motion/
   ```
+
+## 手動デプロイ（非推奨）
+
+ブランチから直接デプロイする場合：
+
+1. **Pages** 設定で **Source** を `Deploy from a branch` に設定
+2. **Branch** を `main` に、**Folder** を `/ (root)` に設定
+3. **Save** ボタンをクリック
+
+注意: 手動デプロイの場合、コード更新のたびに自動的にデプロイされません。
 
 ### ステップ4: 動作確認
 
@@ -81,13 +99,20 @@
 
 コードを更新した場合：
 
-1. 変更をコミット＆プッシュ
-2. GitHub Pagesが自動的に再デプロイ
-3. `service-worker.js` の `CACHE_NAME` を更新して新しいバージョンを反映
+1. 変更をコミット＆プッシュ（`main` ブランチへ）
+2. GitHub Actionsが自動的にデプロイワークフローを実行
+3. **Actions** タブでデプロイ状況を確認
+4. `service-worker.js` の `CACHE_NAME` を更新して新しいバージョンを反映
 
 ```javascript
 const CACHE_NAME = 'tilt-game-v2'; // バージョンを上げる
 ```
+
+### デプロイワークフローの確認
+
+- リポジトリの **Actions** タブを開く
+- 「GitHub Pagesへデプロイ」ワークフローを選択
+- 各ステップの実行状況とログを確認できます
 
 ## セキュリティ
 
