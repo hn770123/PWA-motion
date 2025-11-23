@@ -59,19 +59,26 @@ h1 {
   touch-action: none; /* キャンバス上でタッチイベントを防止 */
 }
 
-/* 権限要求ボタン */
-#requestPermission {
-  display: none; /* 初期は非表示 */
-  margin: 15px auto;
+/* ボタン共通スタイル */
+#requestPermission,
+#resetButton {
+  margin: 10px auto;
   padding: 15px 30px;
   font-size: 16px;
-  background: #4CAF50;
   color: white;
   border: none;
   border-radius: 25px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: block;
+  width: fit-content;
+}
+
+/* 権限要求ボタン */
+#requestPermission {
+  display: none; /* 初期は非表示 */
+  background: #4CAF50;
 }
 
 #requestPermission:hover {
@@ -79,6 +86,19 @@ h1 {
 }
 
 #requestPermission:active {
+  transform: scale(0.98);
+}
+
+/* 更新ボタン */
+#resetButton {
+  background: #2196F3;
+}
+
+#resetButton:hover {
+  background: #1976D2;
+}
+
+#resetButton:active {
   transform: scale(0.98);
 }
 
@@ -98,7 +118,11 @@ h1 {
   color: #4CAF50;
   font-weight: bold;
   font-size: 18px;
-  min-height: 25px;
+  height: 60px; /* 固定の高さでレイアウトを安定化 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 /* レスポンシブ対応 */
