@@ -68,16 +68,26 @@ graph TD
 
 このプロジェクトはGitHub Pagesでホストされています。
 
-### GitHub Pagesへのデプロイ方法
+### 自動デプロイ
 
-1. GitHubリポジトリの Settings に移動
-2. Pages セクションを選択
-3. Source を "Deploy from a branch" に設定
-4. Branch を "main" または "master" に設定し、フォルダを "/ (root)" に設定
-5. Save をクリック
+GitHub Actionsを使用した自動デプロイが設定されています。`main`ブランチにコードがプッシュされると、自動的にGitHub Pagesにデプロイされます。
 
-数分後、以下のURLでアクセス可能になります：
+#### 初回セットアップ
+
+1. GitHubリポジトリの **Settings** に移動
+2. **Pages** セクションを選択
+3. **Source** を "GitHub Actions" に設定
+4. 設定を保存
+
+#### デプロイURL
+
+デプロイ後、以下のURLでアクセス可能になります：
 `https://hn770123.github.io/PWA-motion/`
+
+#### デプロイステータス確認
+
+- リポジトリの **Actions** タブでデプロイの進行状況を確認できます
+- デプロイは通常1〜2分程度で完了します
 
 ## 💻 ローカルでの実行
 
