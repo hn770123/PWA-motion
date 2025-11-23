@@ -446,9 +446,7 @@ function showMessage(text, duration) {
   
   // durationが指定されている場合のみ自動クリア
   if (typeof duration === 'number') {
-    setTimeout(() => {
-      messageElement.textContent = '';
-    }, duration);
+    setTimeout(clearMessage, duration);
   }
 }
 
