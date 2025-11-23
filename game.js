@@ -11,6 +11,9 @@ const PLAYER_RADIUS = 15;  // プレイヤーの半径
 const GOAL_RADIUS = 25;    // ゴールの半径
 const FRICTION = 0.98;     // 摩擦係数（速度の減衰）
 const TILT_SENSITIVITY = 0.3; // 傾き感度
+const MIN_START_GOAL_DISTANCE = 150; // スタートとゴールの最小距離
+const MAX_POSITION_ATTEMPTS = 100; // 位置生成の最大試行回数
+const DEBUG_MODE = false; // デバッグ情報の表示フラグ
 
 // ゲーム状態オブジェクト
 let gameState = {
@@ -245,7 +248,7 @@ function randomizePositions() {
   let attempts = 0;
   let validPosition = false;
   
-  while (!validPosition && attempts < 100) {
+  while (!validPosition && attempts < MAX_POSITION_ATTEMPTS) {
     // ランダムな位置を生成
     const newStartX = margin + Math.random() * (CANVAS_WIDTH - 2 * margin);
     const newStartY = margin + Math.random() * (CANVAS_HEIGHT - 2 * margin);
@@ -257,8 +260,8 @@ function randomizePositions() {
     const dy = newGoalY - newStartY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    // 最小距離（150px）以上離れていればOK
-    if (distance > 150) {
+    // 最小距離以上離れていればOK
+    if (distance > MIN_START_GOAL_DISTANCE) {
       gameState.player.startX = newStartX;
       gameState.player.startY = newStartY;
       gameState.goal.x = newGoalX;
@@ -319,8 +322,8 @@ function draw() {
   // プレイヤーの描画
   drawPlayer();
   
-  // デバッグ情報（開発時のみ）
-  if (false) {
+  // デバッグ情報（DEBUG_MODEが有効な場合のみ表示）
+  if (DEBUG_MODE) {
     ctx.fillStyle = '#000';
     ctx.font = '12px Arial';
     ctx.fillText(`Beta: ${gameState.tilt.beta.toFixed(1)}°`, 10, 20);
