@@ -81,19 +81,33 @@ GitHub Actionsを使用した自動デプロイが設定されています。
 ## トラブルシューティング
 
 ### ページが表示されない
-- GitHub Actionsのビルドが完了しているか確認
+- **Actions** タブでワークフローが正常に完了しているか確認
+  - エラーがある場合、ログを確認して原因を特定
+- GitHub Pagesの設定が正しいか確認（Settings → Pages）
+  - Source: "GitHub Actions" になっているか
 - ブラウザのキャッシュをクリア
-- しばらく待ってから再度アクセス
+- しばらく待ってから再度アクセス（初回デプロイは数分かかる場合あり）
+
+### デプロイワークフローが失敗する
+- リポジトリの **Settings** → **Actions** → **General** で:
+  - "Workflow permissions" が適切に設定されているか確認
+  - "Read and write permissions" または必要な権限が有効か確認
+- `.github/workflows/deploy.yml` の構文エラーがないか確認
+- GitHub Pagesが有効になっているか確認
 
 ### センサーが動作しない
 - HTTPSでアクセスしているか確認（GitHub Pagesは自動的にHTTPS）
 - デバイスがジャイロセンサーをサポートしているか確認
 - ブラウザの権限設定を確認
+- iOSの場合、「センサーを開始」ボタンをタップして権限を許可
 
 ### Service Workerがエラーになる
-- ブラウザのコンソールでエラーメッセージを確認
-- Service Workerの登録を解除してページをリロード
-- キャッシュをクリア
+- ブラウザのコンソール（開発者ツール）でエラーメッセージを確認
+- Service Workerの登録を解除してページをリロード:
+  - Chrome: DevTools → Application → Service Workers → Unregister
+  - Safari: 開発 → Service Workers → 削除
+- ブラウザのキャッシュをクリア
+- `service-worker.js` のパスが正しいか確認
 
 ## 更新とバージョン管理
 
