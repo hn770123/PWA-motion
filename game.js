@@ -19,6 +19,12 @@ const WALL_WIDTH = 10; // 壁の幅
 const MIN_WALL_LENGTH = 60; // 壁の最小長さ
 const MAX_WALL_LENGTH = 150; // 壁の最大長さ
 
+// タイミング設定定数
+const GAME_START_DELAY = 1500; // ゲーム開始までの待機時間（ミリ秒）
+const GOAL_MESSAGE_DURATION = 750; // ゴールメッセージの表示時間（ミリ秒）
+const READY_MESSAGE_DURATION = 750; // Ready?メッセージの表示時間（ミリ秒）
+const START_MESSAGE_DURATION = 2000; // Start!メッセージの表示時間（ミリ秒）
+
 // ゲーム状態オブジェクト
 let gameState = {
   player: {
@@ -40,7 +46,8 @@ let gameState = {
     gamma: 0         // 左右の傾き
   },
   isPlaying: false,  // ゲーム実行中フラグ
-  permissionGranted: false // 権限取得フラグ
+  permissionGranted: false, // 権限取得フラグ
+  isWaiting: false   // 待機中フラグ（ボールの動きを停止）
 };
 
 // DOM要素
@@ -119,12 +126,16 @@ function startSensor() {
   console.log('センサー開始');
   gameState.permissionGranted = true;
   gameState.isPlaying = true;
+  gameState.isWaiting = true;  // 待機状態で開始
   
   // DeviceOrientationイベントのリスナー設定
   window.addEventListener('deviceorientation', handleOrientation);
   
   document.getElementById('statusText').textContent = 
     'デバイスを傾けてボールを動かしてください！';
+  
+  // ゲーム開始シーケンスを実行
+  startGameSequence();
   
   // ゲームループ開始
   gameLoop();
@@ -160,6 +171,11 @@ function gameLoop() {
  * プレイヤーの位置、速度、当たり判定を更新
  */
 function update() {
+  // 待機中は更新をスキップ
+  if (gameState.isWaiting) {
+    return;
+  }
+  
   // 傾きから加速度を計算（gammaでX軸、betaでY軸）
   const accelerationX = gameState.tilt.gamma * TILT_SENSITIVITY;
   const accelerationY = gameState.tilt.beta * TILT_SENSITIVITY;
@@ -182,7 +198,7 @@ function update() {
   // 画面外判定とリセット
   if (isOutOfBounds()) {
     resetPlayerPosition();
-    showMessage('画面外に出ました！スタート位置に戻ります');
+    showMessage('画面外に出ました！スタート位置に戻ります', 3000);
   }
   
   // ゴール判定
@@ -289,18 +305,33 @@ function checkWallCollision() {
  * スコアを増やし、スタートとゴールをランダムに再配置
  */
 function handleGoalReached() {
+  // 待機状態にして動きを停止
+  gameState.isWaiting = true;
+  
   // スコア加算
   gameState.score++;
   updateScoreDisplay();
   
-  // メッセージ表示
-  showMessage('ゴール！ 🎉');
+  // 「Goal!!」メッセージを0.75秒表示
+  showMessage('Goal!! 🎉');
   
   // スタートとゴールをランダムに再配置
   randomizePositions();
   
   // プレイヤーを新しいスタート位置に配置
   resetPlayerPosition();
+  
+  // GOAL_MESSAGE_DURATION後に「Ready?」→「Start!」のシーケンスを実行
+  setTimeout(() => {
+    showMessage('Ready?');
+    
+    // READY_MESSAGE_DURATION後にゲーム再開
+    setTimeout(() => {
+      gameState.isWaiting = false;
+      showMessage('Start!');
+      setTimeout(clearMessage, START_MESSAGE_DURATION);
+    }, READY_MESSAGE_DURATION);
+  }, GOAL_MESSAGE_DURATION);
 }
 
 /**
@@ -405,17 +436,40 @@ function updateScoreDisplay() {
 
 /**
  * メッセージ表示
- * 一時的なメッセージを表示し、3秒後に消す
+ * 一時的なメッセージを表示
  * @param {string} text - 表示するメッセージ
+ * @param {number} duration - 表示時間（ミリ秒）、指定しない場合は自動クリアしない
  */
-function showMessage(text) {
+function showMessage(text, duration) {
   const messageElement = document.getElementById('message');
   messageElement.textContent = text;
   
-  // 3秒後にメッセージをクリア
+  // durationが指定されている場合のみ自動クリア
+  if (typeof duration === 'number') {
+    setTimeout(clearMessage, duration);
+  }
+}
+
+/**
+ * メッセージクリア
+ * メッセージ表示エリアをクリア
+ */
+function clearMessage() {
+  document.getElementById('message').textContent = '';
+}
+
+/**
+ * ゲーム開始シーケンス
+ * Ready? → Start! のメッセージを表示してゲームを開始
+ */
+function startGameSequence() {
+  showMessage('Ready?');
+  
   setTimeout(() => {
-    messageElement.textContent = '';
-  }, 3000);
+    gameState.isWaiting = false;
+    showMessage('Start!');
+    setTimeout(clearMessage, START_MESSAGE_DURATION);
+  }, GAME_START_DELAY);
 }
 
 /**
@@ -556,7 +610,7 @@ function resetGame() {
   resetPlayerPosition();
   
   // メッセージ表示
-  showMessage('ゲームを更新しました！');
+  showMessage('ゲームを更新しました！', 3000);
 }
 
 /**
