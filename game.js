@@ -125,21 +125,11 @@ function startSensor() {
   // DeviceOrientationイベントのリスナー設定
   window.addEventListener('deviceorientation', handleOrientation);
   
-  // 「Ready?」メッセージを表示
-  showMessage('Ready?');
-  
   document.getElementById('statusText').textContent = 
     'デバイスを傾けてボールを動かしてください！';
   
-  // 1.5秒待機してからゲーム開始
-  setTimeout(() => {
-    gameState.isWaiting = false;
-    showMessage('Start!');
-    // 2秒後にStartメッセージをクリア
-    setTimeout(() => {
-      document.getElementById('message').textContent = '';
-    }, 2000);
-  }, 1500);
+  // ゲーム開始シーケンスを実行
+  startGameSequence();
   
   // ゲームループ開始
   gameLoop();
@@ -325,7 +315,7 @@ function handleGoalReached() {
   // プレイヤーを新しいスタート位置に配置
   resetPlayerPosition();
   
-  // 0.75秒後に「Ready?」メッセージを表示
+  // 0.75秒後に「Ready?」→「Start!」のシーケンスを実行
   setTimeout(() => {
     showMessage('Ready?');
     
@@ -333,10 +323,7 @@ function handleGoalReached() {
     setTimeout(() => {
       gameState.isWaiting = false;
       showMessage('Start!');
-      // 2秒後にStartメッセージをクリア
-      setTimeout(() => {
-        document.getElementById('message').textContent = '';
-      }, 2000);
+      setTimeout(clearMessage, 2000);
     }, 750);
   }, 750);
 }
@@ -457,6 +444,28 @@ function showMessage(text, duration) {
       messageElement.textContent = '';
     }, duration);
   }
+}
+
+/**
+ * メッセージクリア
+ * メッセージ表示エリアをクリア
+ */
+function clearMessage() {
+  document.getElementById('message').textContent = '';
+}
+
+/**
+ * ゲーム開始シーケンス
+ * Ready? → Start! のメッセージを表示してゲームを開始
+ */
+function startGameSequence() {
+  showMessage('Ready?');
+  
+  setTimeout(() => {
+    gameState.isWaiting = false;
+    showMessage('Start!');
+    setTimeout(clearMessage, 2000);
+  }, 1500);
 }
 
 /**
