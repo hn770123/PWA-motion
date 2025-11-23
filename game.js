@@ -10,10 +10,14 @@ const CANVAS_HEIGHT = 400; // キャンバスの高さ
 const PLAYER_RADIUS = 15;  // プレイヤーの半径
 const GOAL_RADIUS = 25;    // ゴールの半径
 const FRICTION = 0.98;     // 摩擦係数（速度の減衰）
-const TILT_SENSITIVITY = 0.3; // 傾き感度
+const TILT_SENSITIVITY = 0.15; // 傾き感度（加速度を半分に調整）
 const MIN_START_GOAL_DISTANCE = 150; // スタートとゴールの最小距離
 const MAX_POSITION_ATTEMPTS = 100; // 位置生成の最大試行回数
 const DEBUG_MODE = false; // デバッグ情報の表示フラグ
+const WALL_COUNT = 3; // 壁の数
+const WALL_WIDTH = 10; // 壁の幅
+const MIN_WALL_LENGTH = 60; // 壁の最小長さ
+const MAX_WALL_LENGTH = 150; // 壁の最大長さ
 
 // ゲーム状態オブジェクト
 let gameState = {
@@ -29,6 +33,7 @@ let gameState = {
     x: 350,          // ゴールのX座標
     y: 350           // ゴールのY座標
   },
+  walls: [],         // 壁の配列
   score: 0,          // スコア（ゴール達成回数）
   tilt: {
     beta: 0,         // 前後の傾き
@@ -60,6 +65,9 @@ function init() {
   
   // スコア表示の更新
   updateScoreDisplay();
+  
+  // 初期壁の生成
+  generateWalls();
   
   // iOS 13以降のDeviceOrientationの権限チェック
   if (typeof DeviceOrientationEvent !== 'undefined' && 
@@ -168,6 +176,9 @@ function update() {
   gameState.player.x += gameState.player.velocityX;
   gameState.player.y += gameState.player.velocityY;
   
+  // 壁との衝突判定
+  checkWallCollision();
+  
   // 画面外判定とリセット
   if (isOutOfBounds()) {
     resetPlayerPosition();
@@ -219,6 +230,61 @@ function checkGoalCollision() {
 }
 
 /**
+ * 壁との衝突判定
+ * プレイヤーが壁に衝突した場合、速度を反転させて跳ね返す
+ */
+function checkWallCollision() {
+  for (const wall of gameState.walls) {
+    // 壁の境界を計算
+    const wallLeft = wall.x - wall.width / 2;
+    const wallRight = wall.x + wall.width / 2;
+    const wallTop = wall.y - wall.height / 2;
+    const wallBottom = wall.y + wall.height / 2;
+    
+    // プレイヤーの境界を計算
+    const playerLeft = gameState.player.x - PLAYER_RADIUS;
+    const playerRight = gameState.player.x + PLAYER_RADIUS;
+    const playerTop = gameState.player.y - PLAYER_RADIUS;
+    const playerBottom = gameState.player.y + PLAYER_RADIUS;
+    
+    // 衝突判定
+    if (playerRight > wallLeft && playerLeft < wallRight &&
+        playerBottom > wallTop && playerTop < wallBottom) {
+      
+      // 衝突した場合の処理
+      // どの方向から衝突したかを判定
+      const overlapLeft = playerRight - wallLeft;
+      const overlapRight = wallRight - playerLeft;
+      const overlapTop = playerBottom - wallTop;
+      const overlapBottom = wallBottom - playerTop;
+      
+      // 最小の重なりを見つけて、その方向に押し戻す
+      const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+      
+      if (minOverlap === overlapLeft) {
+        // 左から衝突
+        gameState.player.x = wallLeft - PLAYER_RADIUS;
+        gameState.player.velocityX = -Math.abs(gameState.player.velocityX) * 0.5;
+      } else if (minOverlap === overlapRight) {
+        // 右から衝突
+        gameState.player.x = wallRight + PLAYER_RADIUS;
+        gameState.player.velocityX = Math.abs(gameState.player.velocityX) * 0.5;
+      } else if (minOverlap === overlapTop) {
+        // 上から衝突
+        gameState.player.y = wallTop - PLAYER_RADIUS;
+        gameState.player.velocityY = -Math.abs(gameState.player.velocityY) * 0.5;
+      } else {
+        // 下から衝突
+        gameState.player.y = wallBottom + PLAYER_RADIUS;
+        gameState.player.velocityY = Math.abs(gameState.player.velocityY) * 0.5;
+      }
+      
+      break; // 1フレームで1つの壁とのみ衝突処理
+    }
+  }
+}
+
+/**
  * ゴール到達処理
  * スコアを増やし、スタートとゴールをランダムに再配置
  */
@@ -235,6 +301,58 @@ function handleGoalReached() {
   
   // プレイヤーを新しいスタート位置に配置
   resetPlayerPosition();
+}
+
+/**
+ * 壁の生成
+ * ランダムな位置と向きで壁を生成
+ * スタート位置とゴール位置を避けるように配置
+ */
+function generateWalls() {
+  gameState.walls = [];
+  
+  for (let i = 0; i < WALL_COUNT; i++) {
+    let validWall = false;
+    let attempts = 0;
+    
+    while (!validWall && attempts < MAX_POSITION_ATTEMPTS) {
+      // ランダムな壁の向き（水平または垂直）
+      const isHorizontal = Math.random() > 0.5;
+      // ランダムな長さ
+      const length = MIN_WALL_LENGTH + Math.random() * (MAX_WALL_LENGTH - MIN_WALL_LENGTH);
+      
+      // ランダムな位置
+      const margin = 30;
+      const x = margin + Math.random() * (CANVAS_WIDTH - 2 * margin);
+      const y = margin + Math.random() * (CANVAS_HEIGHT - 2 * margin);
+      
+      const wall = {
+        x: x,
+        y: y,
+        width: isHorizontal ? length : WALL_WIDTH,
+        height: isHorizontal ? WALL_WIDTH : length,
+        isHorizontal: isHorizontal
+      };
+      
+      // スタート位置やゴールと重ならないかチェック
+      const startDist = Math.sqrt(
+        Math.pow(gameState.player.startX - x, 2) + 
+        Math.pow(gameState.player.startY - y, 2)
+      );
+      const goalDist = Math.sqrt(
+        Math.pow(gameState.goal.x - x, 2) + 
+        Math.pow(gameState.goal.y - y, 2)
+      );
+      
+      // 十分に離れていればOK
+      if (startDist > 50 && goalDist > 50) {
+        gameState.walls.push(wall);
+        validWall = true;
+      }
+      
+      attempts++;
+    }
+  }
 }
 
 /**
@@ -271,6 +389,9 @@ function randomizePositions() {
     
     attempts++;
   }
+  
+  // 壁を生成
+  generateWalls();
 }
 
 /**
@@ -316,6 +437,9 @@ function draw() {
   ctx.lineWidth = 2;
   ctx.stroke();
   
+  // 壁の描画
+  drawWalls();
+  
   // ゴールの描画
   drawGoal();
   
@@ -330,6 +454,33 @@ function draw() {
     ctx.fillText(`Gamma: ${gameState.tilt.gamma.toFixed(1)}°`, 10, 35);
     ctx.fillText(`X: ${gameState.player.x.toFixed(1)}`, 10, 50);
     ctx.fillText(`Y: ${gameState.player.y.toFixed(1)}`, 10, 65);
+  }
+}
+
+/**
+ * 壁描画
+ * ゲーム内の障害物（壁）を描画
+ */
+function drawWalls() {
+  ctx.fillStyle = '#333333';
+  
+  for (const wall of gameState.walls) {
+    ctx.fillRect(
+      wall.x - wall.width / 2,
+      wall.y - wall.height / 2,
+      wall.width,
+      wall.height
+    );
+    
+    // 壁に影をつける
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      wall.x - wall.width / 2,
+      wall.y - wall.height / 2,
+      wall.width,
+      wall.height
+    );
   }
 }
 
@@ -394,6 +545,26 @@ function drawPlayer() {
 document.addEventListener('DOMContentLoaded', init);
 
 /**
+ * ゲームリセット処理
+ * スコアを保持したまま、位置と壁を再生成
+ */
+function resetGame() {
+  // 位置をランダム化
+  randomizePositions();
+  
+  // プレイヤーをスタート位置に配置
+  resetPlayerPosition();
+  
+  // メッセージ表示
+  showMessage('ゲームを更新しました！');
+}
+
+/**
  * 権限要求ボタンのイベントリスナー
  */
 document.getElementById('requestPermission')?.addEventListener('click', requestPermission);
+
+/**
+ * 更新ボタンのイベントリスナー
+ */
+document.getElementById('resetButton')?.addEventListener('click', resetGame);
