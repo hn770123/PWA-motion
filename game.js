@@ -40,7 +40,8 @@ let gameState = {
     gamma: 0         // 左右の傾き
   },
   isPlaying: false,  // ゲーム実行中フラグ
-  permissionGranted: false // 権限取得フラグ
+  permissionGranted: false, // 権限取得フラグ
+  isWaiting: false   // 待機中フラグ（ボールの動きを停止）
 };
 
 // DOM要素
@@ -119,12 +120,26 @@ function startSensor() {
   console.log('センサー開始');
   gameState.permissionGranted = true;
   gameState.isPlaying = true;
+  gameState.isWaiting = true;  // 待機状態で開始
   
   // DeviceOrientationイベントのリスナー設定
   window.addEventListener('deviceorientation', handleOrientation);
   
+  // 「Ready?」メッセージを表示
+  showMessage('Ready?');
+  
   document.getElementById('statusText').textContent = 
     'デバイスを傾けてボールを動かしてください！';
+  
+  // 1.5秒待機してからゲーム開始
+  setTimeout(() => {
+    gameState.isWaiting = false;
+    showMessage('Start!');
+    // 2秒後にStartメッセージをクリア
+    setTimeout(() => {
+      document.getElementById('message').textContent = '';
+    }, 2000);
+  }, 1500);
   
   // ゲームループ開始
   gameLoop();
@@ -160,6 +175,11 @@ function gameLoop() {
  * プレイヤーの位置、速度、当たり判定を更新
  */
 function update() {
+  // 待機中は更新をスキップ
+  if (gameState.isWaiting) {
+    return;
+  }
+  
   // 傾きから加速度を計算（gammaでX軸、betaでY軸）
   const accelerationX = gameState.tilt.gamma * TILT_SENSITIVITY;
   const accelerationY = gameState.tilt.beta * TILT_SENSITIVITY;
@@ -182,7 +202,7 @@ function update() {
   // 画面外判定とリセット
   if (isOutOfBounds()) {
     resetPlayerPosition();
-    showMessage('画面外に出ました！スタート位置に戻ります');
+    showMessage('画面外に出ました！スタート位置に戻ります', 3000);
   }
   
   // ゴール判定
@@ -289,18 +309,36 @@ function checkWallCollision() {
  * スコアを増やし、スタートとゴールをランダムに再配置
  */
 function handleGoalReached() {
+  // 待機状態にして動きを停止
+  gameState.isWaiting = true;
+  
   // スコア加算
   gameState.score++;
   updateScoreDisplay();
   
-  // メッセージ表示
-  showMessage('ゴール！ 🎉');
+  // 「Goal!!」メッセージを0.75秒表示
+  showMessage('Goal!! 🎉');
   
   // スタートとゴールをランダムに再配置
   randomizePositions();
   
   // プレイヤーを新しいスタート位置に配置
   resetPlayerPosition();
+  
+  // 0.75秒後に「Ready?」メッセージを表示
+  setTimeout(() => {
+    showMessage('Ready?');
+    
+    // さらに0.75秒後にゲーム再開
+    setTimeout(() => {
+      gameState.isWaiting = false;
+      showMessage('Start!');
+      // 2秒後にStartメッセージをクリア
+      setTimeout(() => {
+        document.getElementById('message').textContent = '';
+      }, 2000);
+    }, 750);
+  }, 750);
 }
 
 /**
@@ -405,17 +443,20 @@ function updateScoreDisplay() {
 
 /**
  * メッセージ表示
- * 一時的なメッセージを表示し、3秒後に消す
+ * 一時的なメッセージを表示
  * @param {string} text - 表示するメッセージ
+ * @param {number} duration - 表示時間（ミリ秒）、指定しない場合は自動クリアしない
  */
-function showMessage(text) {
+function showMessage(text, duration) {
   const messageElement = document.getElementById('message');
   messageElement.textContent = text;
   
-  // 3秒後にメッセージをクリア
-  setTimeout(() => {
-    messageElement.textContent = '';
-  }, 3000);
+  // durationが指定されている場合のみ自動クリア
+  if (duration) {
+    setTimeout(() => {
+      messageElement.textContent = '';
+    }, duration);
+  }
 }
 
 /**
@@ -556,7 +597,7 @@ function resetGame() {
   resetPlayerPosition();
   
   // メッセージ表示
-  showMessage('ゲームを更新しました！');
+  showMessage('ゲームを更新しました！', 3000);
 }
 
 /**
