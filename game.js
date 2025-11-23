@@ -19,6 +19,12 @@ const WALL_WIDTH = 10; // 壁の幅
 const MIN_WALL_LENGTH = 60; // 壁の最小長さ
 const MAX_WALL_LENGTH = 150; // 壁の最大長さ
 
+// タイミング設定定数
+const GAME_START_DELAY = 1500; // ゲーム開始までの待機時間（ミリ秒）
+const GOAL_MESSAGE_DURATION = 750; // ゴールメッセージの表示時間（ミリ秒）
+const READY_MESSAGE_DURATION = 750; // Ready?メッセージの表示時間（ミリ秒）
+const START_MESSAGE_DURATION = 2000; // Start!メッセージの表示時間（ミリ秒）
+
 // ゲーム状態オブジェクト
 let gameState = {
   player: {
@@ -315,17 +321,17 @@ function handleGoalReached() {
   // プレイヤーを新しいスタート位置に配置
   resetPlayerPosition();
   
-  // 0.75秒後に「Ready?」→「Start!」のシーケンスを実行
+  // GOAL_MESSAGE_DURATION後に「Ready?」→「Start!」のシーケンスを実行
   setTimeout(() => {
     showMessage('Ready?');
     
-    // さらに0.75秒後にゲーム再開
+    // READY_MESSAGE_DURATION後にゲーム再開
     setTimeout(() => {
       gameState.isWaiting = false;
       showMessage('Start!');
-      setTimeout(clearMessage, 2000);
-    }, 750);
-  }, 750);
+      setTimeout(clearMessage, START_MESSAGE_DURATION);
+    }, READY_MESSAGE_DURATION);
+  }, GOAL_MESSAGE_DURATION);
 }
 
 /**
@@ -439,7 +445,7 @@ function showMessage(text, duration) {
   messageElement.textContent = text;
   
   // durationが指定されている場合のみ自動クリア
-  if (duration) {
+  if (typeof duration === 'number') {
     setTimeout(() => {
       messageElement.textContent = '';
     }, duration);
@@ -464,8 +470,8 @@ function startGameSequence() {
   setTimeout(() => {
     gameState.isWaiting = false;
     showMessage('Start!');
-    setTimeout(clearMessage, 2000);
-  }, 1500);
+    setTimeout(clearMessage, START_MESSAGE_DURATION);
+  }, GAME_START_DELAY);
 }
 
 /**
