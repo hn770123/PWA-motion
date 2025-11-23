@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4CAF50">
+  <meta name="description" content="iPhoneの傾きセンサーで丸いポイントをゴールまで移動させるゲーム">
+  
+  <!-- PWA設定 -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="傾きゲーム">
+  
+  <title>傾きセンサーゲーム</title>
+  
+  <!-- スタイルシート -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <!-- ゲームコンテナ -->
+  <div id="gameContainer">
+    <!-- タイトル -->
+    <h1>🎮 傾きセンサーゲーム</h1>
+    
+    <!-- スコア表示 -->
+    <div id="scoreDisplay">スコア: 0</div>
+    
+    <!-- ゲームキャンバス -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- 権限要求ボタン（iOS 13以降で表示） -->
+    <button id="requestPermission">センサーを開始</button>
+    
+    <!-- ステータステキスト -->
+    <div id="statusText"></div>
+    
+    <!-- メッセージ表示エリア -->
+    <div id="message"></div>
+  </div>
+  
+  <!-- ゲームスクリプト -->
+  <script src="./game.js"></script>
+  
+  <!-- サービスワーカー登録 -->
+  <script>
+    /**
+     * サービスワーカー登録処理
+     * PWA機能を有効化するためにサービスワーカーを登録
+     */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then((registration) => {
+            console.log('ServiceWorker 登録成功:', registration.scope);
+          })
+          .catch((error) => {
+            console.log('ServiceWorker 登録失敗:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

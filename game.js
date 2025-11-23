@@ -1,0 +1,396 @@
+/**
+ * ゲームロジック
+ * 傾きセンサーを使用したボール移動ゲームのメイン処理
+ * 作成理由: DeviceOrientationAPIを使ってiPhoneの傾きでボールを制御するゲームを実装するため
+ */
+
+// ゲーム設定定数
+const CANVAS_WIDTH = 400;  // キャンバスの幅
+const CANVAS_HEIGHT = 400; // キャンバスの高さ
+const PLAYER_RADIUS = 15;  // プレイヤーの半径
+const GOAL_RADIUS = 25;    // ゴールの半径
+const FRICTION = 0.98;     // 摩擦係数（速度の減衰）
+const TILT_SENSITIVITY = 0.3; // 傾き感度
+
+// ゲーム状態オブジェクト
+let gameState = {
+  player: {
+    x: 50,           // プレイヤーのX座標
+    y: 50,           // プレイヤーのY座標
+    velocityX: 0,    // X方向の速度
+    velocityY: 0,    // Y方向の速度
+    startX: 50,      // スタート位置のX座標
+    startY: 50       // スタート位置のY座標
+  },
+  goal: {
+    x: 350,          // ゴールのX座標
+    y: 350           // ゴールのY座標
+  },
+  score: 0,          // スコア（ゴール達成回数）
+  tilt: {
+    beta: 0,         // 前後の傾き
+    gamma: 0         // 左右の傾き
+  },
+  isPlaying: false,  // ゲーム実行中フラグ
+  permissionGranted: false // 権限取得フラグ
+};
+
+// DOM要素
+let canvas;        // キャンバス要素
+let ctx;           // 2Dコンテキスト
+let animationId;   // アニメーションフレームID
+
+/**
+ * 初期化関数
+ * ページ読み込み時にゲームの初期設定を行う
+ */
+function init() {
+  console.log('ゲーム初期化開始');
+  
+  // キャンバス要素の取得
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  
+  // キャンバスサイズの設定
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = CANVAS_HEIGHT;
+  
+  // スコア表示の更新
+  updateScoreDisplay();
+  
+  // iOS 13以降のDeviceOrientationの権限チェック
+  if (typeof DeviceOrientationEvent !== 'undefined' && 
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13以降: 権限要求ボタンを表示
+    document.getElementById('requestPermission').style.display = 'block';
+    document.getElementById('statusText').textContent = 
+      'センサーを使用するには権限が必要です';
+  } else if (window.DeviceOrientationEvent) {
+    // それ以外: 直接センサーを開始
+    startSensor();
+  } else {
+    // DeviceOrientationがサポートされていない
+    document.getElementById('statusText').textContent = 
+      'このデバイスは傾きセンサーに対応していません';
+  }
+  
+  // 初期描画
+  draw();
+}
+
+/**
+ * 権限要求処理
+ * iOS 13以降でDeviceOrientationの権限を要求
+ */
+async function requestPermission() {
+  try {
+    const permission = await DeviceOrientationEvent.requestPermission();
+    if (permission === 'granted') {
+      gameState.permissionGranted = true;
+      document.getElementById('requestPermission').style.display = 'none';
+      startSensor();
+    } else {
+      document.getElementById('statusText').textContent = 
+        '権限が拒否されました。設定から許可してください。';
+    }
+  } catch (error) {
+    console.error('権限要求エラー:', error);
+    document.getElementById('statusText').textContent = 
+      'エラーが発生しました: ' + error.message;
+  }
+}
+
+/**
+ * センサー開始処理
+ * DeviceOrientationイベントのリスナーを設定してゲームを開始
+ */
+function startSensor() {
+  console.log('センサー開始');
+  gameState.permissionGranted = true;
+  gameState.isPlaying = true;
+  
+  // DeviceOrientationイベントのリスナー設定
+  window.addEventListener('deviceorientation', handleOrientation);
+  
+  document.getElementById('statusText').textContent = 
+    'デバイスを傾けてボールを動かしてください！';
+  
+  // ゲームループ開始
+  gameLoop();
+}
+
+/**
+ * デバイスの傾き処理
+ * DeviceOrientationイベントから傾きデータを取得
+ * @param {DeviceOrientationEvent} event - 傾きイベントオブジェクト
+ */
+function handleOrientation(event) {
+  // beta: 前後の傾き（-180〜180度）
+  // gamma: 左右の傾き（-90〜90度）
+  gameState.tilt.beta = event.beta || 0;
+  gameState.tilt.gamma = event.gamma || 0;
+}
+
+/**
+ * ゲームループ
+ * 毎フレーム実行されるメイン更新処理
+ */
+function gameLoop() {
+  update();
+  draw();
+  
+  if (gameState.isPlaying) {
+    animationId = requestAnimationFrame(gameLoop);
+  }
+}
+
+/**
+ * 更新処理
+ * プレイヤーの位置、速度、当たり判定を更新
+ */
+function update() {
+  // 傾きから加速度を計算（gammaでX軸、betaでY軸）
+  const accelerationX = gameState.tilt.gamma * TILT_SENSITIVITY;
+  const accelerationY = gameState.tilt.beta * TILT_SENSITIVITY;
+  
+  // 速度の更新
+  gameState.player.velocityX += accelerationX;
+  gameState.player.velocityY += accelerationY;
+  
+  // 摩擦の適用
+  gameState.player.velocityX *= FRICTION;
+  gameState.player.velocityY *= FRICTION;
+  
+  // 位置の更新
+  gameState.player.x += gameState.player.velocityX;
+  gameState.player.y += gameState.player.velocityY;
+  
+  // 画面外判定とリセット
+  if (isOutOfBounds()) {
+    resetPlayerPosition();
+    showMessage('画面外に出ました！スタート位置に戻ります');
+  }
+  
+  // ゴール判定
+  if (checkGoalCollision()) {
+    handleGoalReached();
+  }
+}
+
+/**
+ * 画面外判定
+ * プレイヤーが画面外に出たかをチェック
+ * @returns {boolean} 画面外ならtrue
+ */
+function isOutOfBounds() {
+  return (
+    gameState.player.x < -PLAYER_RADIUS ||
+    gameState.player.x > CANVAS_WIDTH + PLAYER_RADIUS ||
+    gameState.player.y < -PLAYER_RADIUS ||
+    gameState.player.y > CANVAS_HEIGHT + PLAYER_RADIUS
+  );
+}
+
+/**
+ * プレイヤー位置のリセット
+ * スタート位置に戻し、速度をリセット
+ */
+function resetPlayerPosition() {
+  gameState.player.x = gameState.player.startX;
+  gameState.player.y = gameState.player.startY;
+  gameState.player.velocityX = 0;
+  gameState.player.velocityY = 0;
+}
+
+/**
+ * ゴール判定
+ * プレイヤーとゴールの距離を計算して衝突判定
+ * @returns {boolean} ゴールに到達していればtrue
+ */
+function checkGoalCollision() {
+  const dx = gameState.player.x - gameState.goal.x;
+  const dy = gameState.player.y - gameState.goal.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  return distance < (PLAYER_RADIUS + GOAL_RADIUS);
+}
+
+/**
+ * ゴール到達処理
+ * スコアを増やし、スタートとゴールをランダムに再配置
+ */
+function handleGoalReached() {
+  // スコア加算
+  gameState.score++;
+  updateScoreDisplay();
+  
+  // メッセージ表示
+  showMessage('ゴール！ 🎉');
+  
+  // スタートとゴールをランダムに再配置
+  randomizePositions();
+  
+  // プレイヤーを新しいスタート位置に配置
+  resetPlayerPosition();
+}
+
+/**
+ * ランダム位置生成
+ * スタートとゴールの位置をランダムに設定
+ * お互いが十分離れた位置になるように配慮
+ */
+function randomizePositions() {
+  // マージンを考慮した範囲でランダムに配置
+  const margin = 40;
+  let attempts = 0;
+  let validPosition = false;
+  
+  while (!validPosition && attempts < 100) {
+    // ランダムな位置を生成
+    const newStartX = margin + Math.random() * (CANVAS_WIDTH - 2 * margin);
+    const newStartY = margin + Math.random() * (CANVAS_HEIGHT - 2 * margin);
+    const newGoalX = margin + Math.random() * (CANVAS_WIDTH - 2 * margin);
+    const newGoalY = margin + Math.random() * (CANVAS_HEIGHT - 2 * margin);
+    
+    // スタートとゴールの距離を計算
+    const dx = newGoalX - newStartX;
+    const dy = newGoalY - newStartY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // 最小距離（150px）以上離れていればOK
+    if (distance > 150) {
+      gameState.player.startX = newStartX;
+      gameState.player.startY = newStartY;
+      gameState.goal.x = newGoalX;
+      gameState.goal.y = newGoalY;
+      validPosition = true;
+    }
+    
+    attempts++;
+  }
+}
+
+/**
+ * スコア表示更新
+ * スコア表示エリアのテキストを更新
+ */
+function updateScoreDisplay() {
+  document.getElementById('scoreDisplay').textContent = 
+    `スコア: ${gameState.score}`;
+}
+
+/**
+ * メッセージ表示
+ * 一時的なメッセージを表示し、3秒後に消す
+ * @param {string} text - 表示するメッセージ
+ */
+function showMessage(text) {
+  const messageElement = document.getElementById('message');
+  messageElement.textContent = text;
+  
+  // 3秒後にメッセージをクリア
+  setTimeout(() => {
+    messageElement.textContent = '';
+  }, 3000);
+}
+
+/**
+ * 描画処理
+ * キャンバスにゲーム画面を描画
+ */
+function draw() {
+  // 背景のクリア
+  ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  
+  // 背景色
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  
+  // スタート位置のマーク（薄い円）
+  ctx.beginPath();
+  ctx.arc(gameState.player.startX, gameState.player.startY, PLAYER_RADIUS + 5, 0, Math.PI * 2);
+  ctx.strokeStyle = '#cccccc';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // ゴールの描画
+  drawGoal();
+  
+  // プレイヤーの描画
+  drawPlayer();
+  
+  // デバッグ情報（開発時のみ）
+  if (false) {
+    ctx.fillStyle = '#000';
+    ctx.font = '12px Arial';
+    ctx.fillText(`Beta: ${gameState.tilt.beta.toFixed(1)}°`, 10, 20);
+    ctx.fillText(`Gamma: ${gameState.tilt.gamma.toFixed(1)}°`, 10, 35);
+    ctx.fillText(`X: ${gameState.player.x.toFixed(1)}`, 10, 50);
+    ctx.fillText(`Y: ${gameState.player.y.toFixed(1)}`, 10, 65);
+  }
+}
+
+/**
+ * ゴール描画
+ * ゴール地点を描画（緑色の円とテキスト）
+ */
+function drawGoal() {
+  // ゴールの円（外側）
+  ctx.beginPath();
+  ctx.arc(gameState.goal.x, gameState.goal.y, GOAL_RADIUS, 0, Math.PI * 2);
+  ctx.fillStyle = '#4CAF50';
+  ctx.fill();
+  
+  // ゴールの円（内側）
+  ctx.beginPath();
+  ctx.arc(gameState.goal.x, gameState.goal.y, GOAL_RADIUS - 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#66BB6A';
+  ctx.fill();
+  
+  // ゴールのテキスト
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 16px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('GOAL', gameState.goal.x, gameState.goal.y);
+}
+
+/**
+ * プレイヤー描画
+ * プレイヤーのボールを描画（青色のグラデーション円）
+ */
+function drawPlayer() {
+  // グラデーション作成
+  const gradient = ctx.createRadialGradient(
+    gameState.player.x - 5, 
+    gameState.player.y - 5, 
+    0,
+    gameState.player.x, 
+    gameState.player.y, 
+    PLAYER_RADIUS
+  );
+  gradient.addColorStop(0, '#64B5F6');
+  gradient.addColorStop(1, '#1976D2');
+  
+  // プレイヤーの円
+  ctx.beginPath();
+  ctx.arc(gameState.player.x, gameState.player.y, PLAYER_RADIUS, 0, Math.PI * 2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  
+  // プレイヤーの縁取り
+  ctx.strokeStyle = '#0D47A1';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+/**
+ * ページ読み込み時の処理
+ * DOMContentLoadedイベントで初期化を実行
+ */
+document.addEventListener('DOMContentLoaded', init);
+
+/**
+ * 権限要求ボタンのイベントリスナー
+ */
+document.getElementById('requestPermission')?.addEventListener('click', requestPermission);
