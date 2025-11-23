@@ -1,0 +1,30 @@
+# 依存関係
+node_modules/
+
+# ビルド成果物
+dist/
+build/
+
+# ログファイル
+*.log
+npm-debug.log*
+
+# エディタ設定
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+
+# 一時ファイル
+tmp/
+temp/
+*.tmp
+
+# テストカバレッジ
+coverage/
+.nyc_output/
